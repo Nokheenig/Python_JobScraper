@@ -1,0 +1,9 @@
+requests
+beautifulsoup4
+selenium
+webdriver_manager
+fastapi
+pydantic
+fastapi[all]
+pymongo[srv] 
+python-dotenv
