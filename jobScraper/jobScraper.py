@@ -65,7 +65,7 @@ class JobScraper:
             log.info(f"{self.resourceName}Dal--getAllSumList-End")
             return res
         
-        def postOne(self, obj: dict):
+        def postOne(self, obj: dict) -> dict | None:
             log.info(f"{self.resourceName}Dal--postOne-Start")
             try:
                 res = requests.post(url=f"{self.apiUrl}/",
@@ -73,17 +73,21 @@ class JobScraper:
                                     )
                 if res.status_code == 201:
                     log.debug(f"Object created in database:\n{res.json}")
+                    return json.loads(res.text)
                 else:
                     log.debug(f"Error while creating the object in database:\nStatus code:{res.status_code}\nmessage:{res.content}")
             except Exception as e:
                 log.debug(f"Error: {e}")
             log.info(f"{self.resourceName}Dal--postOne-End")
 
-        def postMany(self, objList: list[dict]):
+        def postMany(self, objList: list[dict]) -> list[dict] | None:
             log.info(f"{self.resourceName}Dal--postMany-Start")
+            res = [ ]
             for obj in objList:
-                self.postOne(obj)
+                response = self.postOne(obj)
+                if response is not None: res.append(response)
             log.info(f"{self.resourceName}Dal--postMany-End")
+            if len(res)>0: return res
 
         def deleteOne(self, objId: str):
             log.info(f"{self.resourceName}Dal--deleteOne-Start")
@@ -152,6 +156,7 @@ class JobScraper:
             #"CAN_Monster": self.getJobsMonsterCAN
         }
 
+        result = [ ]
         for idx_ptf, platform in enumerate(platforms.keys()):
             self.countryCode = platform.split("_")[0]
             self.sessionPlatformFilesPath = os.path.join(self.sessionDirPath,f"{idx_ptf}.{platform}")
@@ -161,7 +166,14 @@ class JobScraper:
             
             platformJobs = platforms[platform]()
 
-            if len(platformJobs) >0: self.dalJob.postMany(objList=platformJobs)
+            if len(platformJobs) >0: 
+                res = self.dalJob.postMany(objList=platformJobs)
+                if res: result.append(res)
+
+        if len(result)>0:
+            print(result)
+            print(f"JobScraping finished: {len(result)} jobs successfully added in database (see above)")
+
 
 
     def getJobsIndeed(self) -> list[dict]:

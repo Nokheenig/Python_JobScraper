@@ -14,9 +14,16 @@ router = APIRouter()
 @router.post("/", response_description=f"Creates a new {objectName} in database", status_code=status.HTTP_201_CREATED, response_model=objectModel)
 def create_object(request: Request, obj: objectModel = Body(...)):
     obj = jsonable_encoder(obj)
+    projection = {
+        "_id": 1,
+        "platform": 1,
+        "company": 1,
+        "title": 1,
+    }
     new_obj = request.app.database[f"{objectName}s"].insert_one(obj)
     created_obj = request.app.database[f"{objectName}s"].find_one(
-        {"_id": new_obj.inserted_id}
+        {"_id": new_obj.inserted_id},
+        projection
     )
 
     return created_obj
