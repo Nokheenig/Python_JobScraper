@@ -16,6 +16,7 @@
 # python -m pip install 'fastapi[all]' 'pymongo[srv]' python-dotenv
 # python -m uvicorn main:app --reload
 
+import uvicorn
 from fastapi import FastAPI
 from dotenv import dotenv_values
 from pymongo import MongoClient
@@ -44,3 +45,6 @@ app.include_router(job_router, tags=["jobs"], prefix=f"/jobs")
 @app.get("/")
 async def root():
     return {"message": "Welcome to the PyMongo tuto!"}
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", reload=True)
