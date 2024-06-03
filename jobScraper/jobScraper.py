@@ -156,6 +156,7 @@ class JobScraper:
             #"CAN_Monster": self.getJobsMonsterCAN
         }
 
+        print(f"JobScraper - Started scraping job for:\n{platforms}")
         result = [ ]
         for idx_ptf, platform in enumerate(platforms.keys()):
             self.countryCode = platform.split("_")[0]
@@ -172,7 +173,11 @@ class JobScraper:
 
         if len(result)>0:
             print(result)
-            print(f"JobScraping finished: {len(result)} jobs successfully added in database (see above)")
+            print(f"JobScraper - Finished scraping jobs for:\n{platforms}")
+            print(f"{len(result)} jobs were successfully added in database (see above)")
+        else:
+            print(f"JobScraper - Finished scraping jobs for:\n{platforms}")
+            print("No jobs were added in database, maybe the jobs were already there? Check log files for more details.")
 
 
 
@@ -396,6 +401,7 @@ class JobScraper:
         for idx_post, postUrl in enumerate(postUrls):
             if postUrl in self.dalJob.scrapedUrlsInDb:
                 log.info(f"Post {idx_post} - SKIPPED - Post already scraped: Post Url already in database\nurl: {postUrl}")
+                print(f"Post {idx_post} - SKIPPED - Post already scraped: Post Url already in database\nurl: {postUrl}")
                 continue
             self.driver.get(url=postUrl)
             time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante
