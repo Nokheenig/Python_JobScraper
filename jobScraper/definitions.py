@@ -6,6 +6,43 @@ COUNTRY_CODES_MAP = {
     "CAN": "Canada",
     "KR": "Korea"
 }
+JOB_SEARCH_LOCATIONS = {
+    "FR": [
+        {
+            "city": "Paris",
+            "district": "Ile de France",
+            "query": "Île-de-France"
+        },
+        {
+            "city": "Lyon",
+            "district": "Auv. Rhone-Alpes",
+            "query": None
+        }
+    ],
+    "CAN": [
+        {
+            "city": "Montreal",
+            "district": "Quebec",
+            "query": "Montreal, QC"
+        },
+        {
+            "city": "Ottawa",
+            "district": "Ontario",
+            "query": "Ottawa, ON"
+        },
+        {
+            "city": "Toronto",
+            "district": "Ontario",
+            "query": "Toronto, ON"
+        },
+        {
+            "city": "Vancouver",
+            "district": "British Columbia",
+            "query": "Vancouver, BC"
+        }
+    ],
+    "KR": "Korea"
+}
 """
 You can do this how Django does it: define a variable to the Project Root from a file that is in the top-level of the project. For example, if this is what your project structure looks like:
 

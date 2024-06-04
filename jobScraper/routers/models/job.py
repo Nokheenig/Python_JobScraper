@@ -31,6 +31,7 @@ class Job(BaseModel):
     tags: Optional[list[str]]
     qualificationsRequired: Optional[list[str]]
     qualificationsPreferred: Optional[list[str]]
+    structuredData: Optional[dict[str,str]]
     #website_alive: Optional[bool]
 
     class Config:
@@ -67,7 +68,27 @@ Leader français du recyclage depuis 1985, notre client est aujourd'hui le trois
                 "createdOn": "2024-06-01",
                 "tags": ["kotlin"],
                 "qualificationsRequired": ["kotlin", "Compose"],
-                "qualificationsPreferred": ["javascript"]
+                "qualificationsPreferred": ["javascript"],
+                "structuredData":{
+                    "recruiter": "Paul Atkinson",
+                    "coverLetterData": {
+                        "adjectivesList": "$list-de nature curieuse,réfléchis,créatif,force de proposition,aimant partager",
+                        "companyBlock": "block"
+                    },
+                    "company":{
+                        "values": "LoremIpsum",
+                        "engagements": "LoremIpsum",
+                        "company": "LoremIpsum"
+                    },
+                    "department": "LoremIpsum",
+                    "missions": "LoremIpsum",
+                    "stack": "LoremIpsum",
+                    "profile": "LoremIpsum",
+                    "experience": "LoremIpsum",
+                    "bonus": "LoremIpsum",
+                    "hiringProcess": "LoremIpsum",
+                    "personalNotes": "LoremIpsum"
+                }
             }
         }
 
@@ -97,6 +118,7 @@ class JobUpdate(BaseModel):
     tags: Optional[list[str]]
     qualificationsRequired: Optional[list[str]]
     qualificationsPreferred: Optional[list[str]]
+    structuredData: Optional[dict[str,str]]
     #website_alive: Optional[bool]
 
     class Config:
@@ -133,6 +155,26 @@ Leader français du recyclage depuis 1985, notre client est aujourd'hui le trois
                 "lastUpdated": "2024-06-01T23:41:34",
                 "tags": ["kotlin"],
                 "qualificationsRequired": ["kotlin", "Compose"],
-                "qualificationsPreferred": ["javascript"]
+                "qualificationsPreferred": ["javascript"],
+                "structuredData":{
+                    "recruiter": "Paul Atkinson",
+                    "coverLetterData": {
+                        "adjectivesList": "$list-de nature curieuse,réfléchis,créatif,force de proposition,aimant partager",
+                        "companyBlock": "block"
+                    },
+                    "company":{
+                        "values": "LoremIpsum",
+                        "engagements": "LoremIpsum",
+                        "company": "LoremIpsum"
+                    },
+                    "department": "LoremIpsum",
+                    "missions": "LoremIpsum",
+                    "stack": "LoremIpsum",
+                    "profile": "LoremIpsum",
+                    "experience": "LoremIpsum",
+                    "bonus": "LoremIpsum",
+                    "hiringProcess": "LoremIpsum",
+                    "personalNotes": "LoremIpsum"
+                }
             }
         }

@@ -15,7 +15,7 @@ import warnings
 warnings.filterwarnings("ignore")
 import os
 import json
-from definitions import ROOT_DIR, COUNTRY_CODES_MAP
+from definitions import ROOT_DIR, COUNTRY_CODES_MAP, JOB_SEARCH_LOCATIONS
 import re
 
 import logging as log
@@ -126,7 +126,7 @@ class JobScraper:
             log.info(f"{self.resourceName}Dal--deleteAll-End")
     
     def getSearchQueries(self, countryCode: str = "FR") -> list[str]:
-        return ["kotlin"]
+        #return ["kotlin"]
         commonList = [
             "kotlin",
             "flutter",
@@ -257,7 +257,14 @@ class JobScraper:
         time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante
 
         #Start Scraping Logic
-        locations = ["Île-de-France"]#, "Lyon"]
+        jobSearchLocations = JOB_SEARCH_LOCATIONS[self.countryCode]
+        locations = [ ]#["Île-de-France", "Lyon"]
+        for location in jobSearchLocations:
+            if location["query"]:
+                locations.append(location["query"])
+            else:
+                locations.append(location["city"])
+
         queries = self.getSearchQueries()
         postUrlsDict = {}
         errors=[]
