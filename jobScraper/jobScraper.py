@@ -1,6 +1,8 @@
 from selenium import webdriver #Webdriver de Selenium qui permet de contrôler un navigateur
 from selenium.webdriver.common.by import By #Permet d'accéder aux différents élements de la page web
 #from selenium.webdriver.remote.webelement
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
 
 from webdriver_manager.chrome import ChromeDriverManager #Assure la gestion du webdriver de Chrome
 
@@ -36,6 +38,16 @@ class JobScraper:
         self.dbTimestamp = ""
         self.countryCode = ""
         self.antibotFlagPauseSeconds = 2.5
+        self.chromeDriverPath = "/snap/bin/chromium.chromedriver"#"/snap/chromium/2873/usr/lib/chromium-browser/chromedriver"
+        self.chromeOptions = webdriver.ChromeOptions()
+        self.chromeOptions.add_argument('--headless')
+        self.chromeOptions.add_argument('--no-sandbox')
+        self.chromeOptions.add_argument('--disable-dev-shm-usage')
+        self.chromeOptions.add_argument('--window-size=1920,1080')
+        #self.chromeOptions.add_argument('--ignore-certificate-errors')
+        #self.chromeOptions.add_argument('--allow-running-insecure-content')
+        user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.50 Safari/537.36'
+        self.chromeOptions.add_argument(f'user-agent={user_agent}')
         
     
     class DataAccessLayer:
@@ -138,10 +150,10 @@ class JobScraper:
         self.fsTimestamp = sessionTimestamp.strftime("%Y-%m-%d_%H-%M-%S")
         self.dbTimestamp = sessionTimestamp.strftime("%Y-%m-%dT%H:%M:%S")
         sessionFilesPath = os.path.join(ROOT_DIR,"logs","sessionFiles",self.fsTimestamp)
-        os.mkdir(sessionFilesPath)
+        os.makedirs(sessionFilesPath)
 
         self.sessionDirPath = os.path.join(ROOT_DIR,sessionFilesPath,"jobs")
-        os.mkdir(self.sessionDirPath)
+        os.makedirs(self.sessionDirPath)
 
         platforms = {
             #"FR_linkedIn": self.getJobsLinkedin,
@@ -161,9 +173,9 @@ class JobScraper:
         for idx_ptf, platform in enumerate(platforms.keys()):
             self.countryCode = platform.split("_")[0]
             self.sessionPlatformFilesPath = os.path.join(self.sessionDirPath,f"{idx_ptf}.{platform}")
-            os.mkdir(self.sessionPlatformFilesPath)
+            os.makedirs(self.sessionPlatformFilesPath)
             sessionFailuresPath = os.path.join(self.sessionPlatformFilesPath,"failures")
-            os.mkdir(sessionFailuresPath)
+            os.makedirs(sessionFailuresPath)
             
             platformJobs = platforms[platform]()
 
@@ -241,7 +253,7 @@ class JobScraper:
         
 
         sessionFilesDir = self.sessionPlatformFilesPath
-        self.driver = webdriver.Chrome()#ChromeDriverManager().install()) 
+        self.driver = webdriver.Chrome(options=self.chromeOptions, service=Service(self.chromeDriverPath))#ChromeDriverManager().install()) 
         time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante
 
         #Start Scraping Logic
@@ -294,6 +306,10 @@ class JobScraper:
                             "query": query,
                             " url": url
                             }, indent=4)}""") #On ajoute dans une liste tous les articles dont n'où n'avons pas pu scrapper le contenu
+                        self.driver.get_screenshot_as_file("screenshot.png")
+                        time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante
+                        choice = input("Error while scraping the main page: 'mosaic-provider-jobcards' not found\nDo you want to continue [Y/n]?: ")
+                        if choice == 'n': exit()
                         continue
 
                     jobCards = jobCardsContainer.find_elements(By.XPATH,".//*[@dir]")#jobCardsContainer.find_elements(By.XPATH,"//ul//child:li")
@@ -311,6 +327,7 @@ class JobScraper:
                             "query": query,
                             " url": url
                             }, indent=4)}""") #On ajoute dans une liste tous les articles dont n'où n'avons pas pu scrapper le contenu
+                            time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante
                             continue
                         else:
                             log.debug(f"ScraperLog - jobCard #{idx_jobCard}:Found a job title: retrieving job ID...")
@@ -326,6 +343,7 @@ class JobScraper:
                             "query": query,
                             " url": url
                             }, indent=4)}""") #On ajoute dans une liste tous les articles dont n'où n'avons pas pu scrapper le contenu
+                            time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante
                             continue
                         else:
                             log.debug(f"ScraperLog - jobCard #{idx_jobCard}:Found an ID holder: retrieving job ID...")
@@ -349,6 +367,7 @@ class JobScraper:
                             "query": query,
                             " url": url
                             },indent=4)}""") #On ajoute dans une liste tous les articles dont n'où n'avons pas pu scrapper le contenu
+                            time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante
                             continue
                         jobId = re.split("-|_", aTagId)[1] #aTagId.split("_")[1] if aTagId else None
                         log.debug(f"ScraperLog - jobId: {jobId}")
