@@ -6,6 +6,24 @@ COUNTRY_CODES_MAP = {
     "CAN": "Canada",
     "KR": "Korea"
 }
+CONTRACT_TYPES_BY_COUNTRY_CODE = {
+    "FR":{
+        "fullTime": ["cdi", "temps-plein", "temps plein"],
+        "temporary": ["cdd"],
+        "partTime": ["temps-partiel", "temps partiel"],
+        "internship": ["stage"],
+        "apprenticeship": ["alternance"],
+        "freelance": ["freelance"]
+    },
+    "else":{
+        "fullTime": ["fulltime","full-time", "full time"],
+        "temporary": ["contract", "temporary"],
+        "partTime": ["part-time", "part time"],
+        "internship": ["internship"],
+        "apprenticeship": ["apprenticeship","co-op", "co op"],
+        "freelance": ["freelance"]
+    },
+}
 JOB_SEARCH_LOCATIONS = {
     "FR": [
         {

@@ -15,7 +15,7 @@ import warnings
 warnings.filterwarnings("ignore")
 import os
 import json
-from definitions import ROOT_DIR, COUNTRY_CODES_MAP, JOB_SEARCH_LOCATIONS
+from definitions import ROOT_DIR, COUNTRY_CODES_MAP, JOB_SEARCH_LOCATIONS, CONTRACT_TYPES_BY_COUNTRY_CODE
 import re
 
 import logging as log
@@ -48,6 +48,14 @@ class JobScraper:
         #self.chromeOptions.add_argument('--allow-running-insecure-content')
         user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.50 Safari/537.36'
         self.chromeOptions.add_argument(f'user-agent={user_agent}')
+        self.setSearchContractTypes(
+            fullTime=True,
+            temporary=True,
+            partTime=False,
+            internship=False,
+            apprenticeship=True,
+            freelance=True
+        )
         
     
     class DataAccessLayer:
@@ -140,6 +148,56 @@ class JobScraper:
         }
         cList: list = countryList[countryCode]
         return [*commonList,*cList]
+    
+    def setSearchContractTypes(self, fullTime: bool, temporary: bool, partTime: bool, internship: bool, apprenticeship: bool, freelance: bool):
+        contractTypes = []
+        if fullTime: contractTypes.append("fullTime")
+        if temporary: contractTypes.append("temporary")
+        if partTime: contractTypes.append("partTime")
+        if internship: contractTypes.append("internship")
+        if apprenticeship: contractTypes.append("apprenticeship")
+        if freelance: contractTypes.append("freelance")
+
+        self.searchedGenericContractTypes = contractTypes
+
+    def setCountrySearchedContractTypes(self):
+        countryCode = self.countryCode
+        countryContractTypes = \
+            CONTRACT_TYPES_BY_COUNTRY_CODE[countryCode] \
+            if countryCode in CONTRACT_TYPES_BY_COUNTRY_CODE \
+            else CONTRACT_TYPES_BY_COUNTRY_CODE["else"]
+        
+        """
+        countrySearchedContractTypes = [ ] 
+        for searchedContractType in self.searchedGenericContractTypes:
+            countrySearchedContractTypes.append(countryContractTypes[searchedContractType])
+        
+        self.searchedContractTypes = countrySearchedContractTypes
+        v1^
+        """
+        countrySearchedContractTypes = {contractType: genericContractType for genericContractType, matchingCountryContractTypes in countryContractTypes.items() for contractType in matchingCountryContractTypes}
+
+        self.searchedContractTypes = countrySearchedContractTypes
+    
+    def isSearchedTypeOfContract(self, jobContractType: str) -> tuple[bool,str|None]:
+        jobContractType = jobContractType.lower()
+        if jobContractType in self.searchedContractTypes:
+            genericContractType = self.searchedContractTypes[jobContractType]
+            if self.countryCode == "FR" and genericContractType in ["internship", "apprenticeship"]:
+                log.info("Job SKIPPED - Job is an internship or an apprenticeship in France")
+                return (False, None)
+            log.debug(f"Job ({genericContractType}) is in searched list")
+            return (True, genericContractType)
+        else:
+            log.debug(f"Job SKIPPED - Job ({jobContractType}) is NOT in searched list")
+            return (False, None)
+        for contractType in self.searchedContractTypes:
+            if contractType == jobContractType:
+                return (True, contractType)
+            
+        return (False, None)
+
+
 
     def getJobs(self):
         year = self.year
@@ -176,6 +234,8 @@ class JobScraper:
             os.makedirs(self.sessionPlatformFilesPath)
             sessionFailuresPath = os.path.join(self.sessionPlatformFilesPath,"failures")
             os.makedirs(sessionFailuresPath)
+
+            self.setCountrySearchedContractTypes()
             
             platformJobs = platforms[platform]()
 
@@ -194,6 +254,7 @@ class JobScraper:
 
 
     def getJobsIndeed(self) -> list[dict]:
+        # Testé pour des recherches d'emploi en France et en Francais
         def cleanPostDescription(html:str | None) -> str:
             if not html: return ""
             
@@ -266,12 +327,16 @@ class JobScraper:
                 locations.append(location["city"])
 
         queries = self.getSearchQueries()
+
+        # Retrieve all job searches posts urls
+        searchRadius = 25 # search radius of x km outside of the given location; available values : 0, 10, 25, 35, 
+        fromAge = 1 # jobs from the last x days; available values 1, 3,7,14
         postUrlsDict = {}
         errors=[]
         for idx_loc, location in enumerate(locations):
             for idx_q, query in enumerate(queries):
                 queryString = "+".join(query.split(" "))
-                url = f"https://fr.indeed.com/jobs?q={queryString}&l={location}&sort=date&fromage=1"
+                url = f"https://fr.indeed.com/jobs?q={queryString}&l={location}&sort=date&fromage={fromAge}&radius={searchRadius}"
                 page = 1
                 log.info(f"ScraperLog - New job search>query:'{query}', location:'{location}'\n{url}")
                 totalJobsCount = 0
@@ -282,31 +347,14 @@ class JobScraper:
                 
                 while not lastPage:
                     log.info(f"ScraperLog - Getting job urls on page {page}...")
-                    """
-                    try:
-                        jobCardsContainer = self.driver.find_element(By.ID,"mosaic-provider-jobcards")
-                        jobCards = jobCardsContainer.find_elements(By.XPATH,"//ul//child:li")
-                        for jobCard in jobCards:
-                            aTagId = jobCard.find_element(By.XPATH,"//h2[starts-with(@class,'jobTitle')]//a").get_attribute("id")
-                            jobId = aTagId.split("_")[1] if aTagId else None
-                            
-                            if jobId: 
-                                jobPostUrl = f"https://fr.indeed.com/viewjob?jk={jobId}"
-                                postUrls[jobId] = jobPostUrl
-                    except Exception as e: #
-                        log.debug({
-                            "message": f"Error while scraping the main page: {e}",
-                            " location" : location,
-                            "query": query,
-                            " url": url
-                            }) #On ajoute dans une liste tous les articles dont n'où n'avons pas pu scrapper le contenu
-                    ^v1
-                    """
-
                     
                     jobCardsContainer = self.driver.find_elements(By.ID,"mosaic-provider-jobcards")
                     jobCardsContainer = jobCardsContainer[0] if len(jobCardsContainer) >0 else None
                     if jobCardsContainer is None: 
+                        noResultMessageContainer = self.driver.find_elements(By.XPATH,"//div[starts-with(@class,'jobsearch-NoResult-messageContainer')]")
+                        if len(noResultMessageContainer) >0:
+                            log.info(f"No jobs have been found for the current query: {{query:'{query}', location:'{location}'}}")
+
                         log.debug(f"""ScraperLog - Error:\n{json.dumps(obj={
                             "message": f"Error while scraping the main page: 'mosaic-provider-jobcards' not found",
                             " location" : location,
@@ -390,14 +438,6 @@ class JobScraper:
                     ^v2
                     """
 
-                    """
-                    try:
-                        btnNext = self.driver.find_element(By.XPATH, "//a[@data-testid='pagination-page-next']") #On identifie le bouton 
-                    except Exception as e:
-                        print(e)
-                        btnNext = None
-                    ^v1
-                    """
                     btnNext = self.driver.find_elements(By.XPATH, "//a[@data-testid='pagination-page-next']") #On identifie le bouton 
                     btnNext = btnNext[0] if len(btnNext) >0 else None
                     """
@@ -418,6 +458,7 @@ class JobScraper:
             with open(os.path.join(sessionFilesDir,f"errors_main_page.json"), "w", encoding='utf-8') as f:
                         f.write(json.dumps(obj=errors, indent=4))
 
+        # Scrap all posts
         postUrls = list(postUrlsDict.keys())
         #print(postUrls)# if self.debug else {}
         log.debug(f"ScraperLog - postsUrls: {postUrls}")
@@ -467,6 +508,17 @@ class JobScraper:
                 jobDescriptionHTML = jobDescriptionElement.get_attribute("innerHTML")
                 jobDescription = cleanPostDescription(html=jobDescriptionHTML)
 
+                salaryInfoAndJobTypeElement = body.find_element(By.ID, "salaryInfoAndJobType")
+                jobTypeElement = salaryInfoAndJobTypeElement.find_elements(By.TAG_NAME,"span")[-1]
+
+                jobType = str(jobTypeElement.get_attribute("innerText")).strip()
+                if jobType:
+                    if jobType[0] == "-": jobType = jobType[1:].strip()
+                isSearchedJobType, genericJobType = self.isSearchedTypeOfContract(jobContractType=jobType)
+                if not isSearchedJobType: 
+                    log.debug(f"Post #{idx_post} is not is searchedContractTypes - SKIPPED\nPost url:{postUrl}")
+                    continue
+                
                 applyButtonElement = body.find_elements(By.XPATH,".//div[@id='jobsearch-ViewJobButtons-container']")[0].find_elements(By.XPATH, ".//button")[0]
                 applyButtonText = applyButtonElement.get_attribute("innerText")
                 applyUrl = None
@@ -514,6 +566,7 @@ class JobScraper:
                 "district": None,
                 "city": city,
                 "zipCode": zipCode,
+                "contractType": genericJobType,
                 "skills": None,
                 "description": jobDescription,
                 "scrapStatus": scrapStatus,
