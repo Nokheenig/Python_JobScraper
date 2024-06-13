@@ -147,7 +147,7 @@ class JobScraper:
             "CAN-QC": ["développeur mobile"],
         }
         cList: list = countryList[countryCode]
-        return [*commonList,*cList]
+        return commonList #[*commonList,*cList]
     
     def setSearchContractTypes(self, fullTime: bool, temporary: bool, partTime: bool, internship: bool, apprenticeship: bool, freelance: bool):
         contractTypes = []
@@ -578,7 +578,8 @@ class JobScraper:
                 "lastUpdated": None,
                 "tags": tags,
                 "qualificationsRequired": None,
-                "qualificationsPreferred": None
+                "qualificationsPreferred": None,
+                "structuredData": None
             }
             posts.append(job)
 

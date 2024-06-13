@@ -18,6 +18,7 @@
 
 import uvicorn
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from dotenv import dotenv_values
 from pymongo import MongoClient
 
@@ -29,6 +30,20 @@ from routers.job_router import router as job_router
 config = dotenv_values(".env")
 MongoClient
 app = FastAPI()
+
+origins = [
+    "http://192.168.99:3000",
+    "http://localhost:3000",
+    "http://192.168.98:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins = origins,
+    allow_credentials = True,
+    allow_methods = ["*"],
+    allow_headers = ["*"],
+)
 
 @app.on_event("startup")
 def startup_db_client():
