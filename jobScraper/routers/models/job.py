@@ -94,33 +94,33 @@ Leader français du recyclage depuis 1985, notre client est aujourd'hui le trois
         }
 
 class JobUpdate(BaseModel):
-    title: Optional[str]
+    title: Optional[str] = None
     #sourceType: str = Field(...)
     #platform: str = Field(...)
     #criterias: dict[str,str] = Field(...)
     #url: str = Field(...)
-    applyUrl: Optional[str]
+    applyUrl: Optional[str] = None
     #slug: str = Field(...)
-    motherCompany: Optional[str]
-    company: Optional[str]
-    country: Optional[str]
-    district: Optional[str]
-    city: Optional[str]
-    zipCode: Optional[str]
-    contractType: Optional[str]
-    skills: Optional[list[str]]
-    description: Optional[str]
-    scrapStatus: Optional[str]
-    status: Optional[str]
-    applicationDate: Optional[str]
-    timeoutDate: Optional[str]
+    motherCompany: Optional[str] = None
+    company: Optional[str] = None
+    country: Optional[str] = None
+    district: Optional[str] = None
+    city: Optional[str] = None
+    zipCode: Optional[str] = None
+    contractType: Optional[str] = None
+    skills: Optional[list[str]] = None
+    description: Optional[str] = None
+    scrapStatus: Optional[str] = None
+    status: Optional[str] = None
+    applicationDate: Optional[str] = None
+    timeoutDate: Optional[str] = None
     #createdAt: str = Field(...)
     #createdOn: str = Field(...)
-    lastUpdated: str = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
-    tags: Optional[list[str]]
-    qualificationsRequired: Optional[list[str]]
-    qualificationsPreferred: Optional[list[str]]
-    structuredData: Optional[dict[str,str]]
+    #lastUpdated: str = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+    tags: Optional[list[str]] = None
+    qualificationsRequired: Optional[list[str]] = None
+    qualificationsPreferred: Optional[list[str]] = None
+    structuredData: Optional[dict[str,str]] = None
     #website_alive: Optional[bool]
 
     """
