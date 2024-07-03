@@ -30,9 +30,23 @@ def create_object(request: Request, obj: objectModel = Body(...)):
 
 #
 @router.get("/", response_description=f"Returns all {objectName}s in the database (defaults: page=1, perPage=2)")#, response_model=List[objectModel])
-def list_objects(request: Request, page:int=1, perPage:int=25):
+def list_objects(request: Request, page:int=1, perPage:int=25, status: dict|None = None):
+    if status is None: status = {
+        "null": True,
+        "new": True,
+        "openReferal": True,
+        "openReadyToApply": True,
+        "onGoingSelectedForApplication": True,
+        "onGoingApplied": False,
+        "closedLost": False,
+        "closedExpired": False,
+        "closedLostDoNotQualify": False,
+        "closedTimeout": False,
+        "closedNotInterested": False
+    }
+    selectedStatus = [k if v else {} for k,v in status.items()]
     col = request.app.database[f"{objectName}s"]
-    query = {}
+    query = {"status": {"$in": selectedStatus}}
     projection = {}
     objects = list(col.find(query, projection, limit=perPage, skip=((page-1)*perPage)))
     docCount = col.count_documents(query)
