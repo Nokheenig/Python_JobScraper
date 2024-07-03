@@ -8,12 +8,12 @@ COUNTRY_CODES_MAP = {
 }
 CONTRACT_TYPES_BY_COUNTRY_CODE = {
     "FR":{
-        "fullTime": ["cdi", "temps-plein", "temps plein"],
-        "temporary": ["cdd"],
+        "fullTime": ["cdi", "temps-plein", "temps plein", "cdi, temps plein", "cdi, statut cadre"],
+        "temporary": ["cdd", "temps plein, cdd"],
         "partTime": ["temps-partiel", "temps partiel"],
-        "internship": ["stage"],
-        "apprenticeship": ["alternance"],
-        "freelance": ["freelance"]
+        "internship": ["stage", "temps plein, stage"],
+        "apprenticeship": ["alternance", "temps plein, alternance", "contrat d'apprentissage", "alternance, contrat d'apprentissage", ""],
+        "freelance": ["freelance", "temps plein, indépendant / freelance", "indépendant / freelance"]
     },
     "else":{
         "fullTime": ["fulltime","full-time", "full time"],

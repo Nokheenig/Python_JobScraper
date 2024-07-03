@@ -37,7 +37,7 @@ class JobScraper:
         self.fsTimestamp = ""
         self.dbTimestamp = ""
         self.countryCode = ""
-        self.antibotFlagPauseSeconds = 2.5
+        self.antibotFlagPauseSeconds = 5 #2.5
         self.chromeDriverPath = "/snap/bin/chromium.chromedriver"#"/snap/chromium/2873/usr/lib/chromium-browser/chromedriver"
         self.chromeOptions = webdriver.ChromeOptions()
         self.chromeOptions.add_argument('--headless')
@@ -343,28 +343,32 @@ class JobScraper:
                 self.driver.get(url=url) #Accès aux annonces du jour'
                 #btnDateFilter = self.driver.find_element(By.ID, "filter-dateposted") #On identifie le bouton 
                 #self.driver.execute_script("arguments[0].click();", btnDateFilter); # On clique dessus
+                jobsFound = True
                 lastPage = False
                 
-                while not lastPage:
+                while not lastPage and jobsFound:
                     log.info(f"ScraperLog - Getting job urls on page {page}...")
                     
                     jobCardsContainer = self.driver.find_elements(By.ID,"mosaic-provider-jobcards")
                     jobCardsContainer = jobCardsContainer[0] if len(jobCardsContainer) >0 else None
                     if jobCardsContainer is None: 
+
                         noResultMessageContainer = self.driver.find_elements(By.XPATH,"//div[starts-with(@class,'jobsearch-NoResult-messageContainer')]")
                         if len(noResultMessageContainer) >0:
                             log.info(f"No jobs have been found for the current query: {{query:'{query}', location:'{location}'}}")
-
-                        log.debug(f"""ScraperLog - Error:\n{json.dumps(obj={
-                            "message": f"Error while scraping the main page: 'mosaic-provider-jobcards' not found",
-                            " location" : location,
-                            "query": query,
-                            " url": url
-                            }, indent=4)}""") #On ajoute dans une liste tous les articles dont n'où n'avons pas pu scrapper le contenu
-                        self.driver.get_screenshot_as_file("screenshot.png")
+                        else:
+                            log.debug(f"""ScraperLog - Error:\n{json.dumps(obj={
+                                "message": f"Error while scraping the main page: 'mosaic-provider-jobcards' not found",
+                                " location" : location,
+                                "query": query,
+                                " url": url
+                                }, indent=4)}""") #On ajoute dans une liste tous les articles dont n'où n'avons pas pu scrapper le contenu
+                        
+                        #self.driver.get_screenshot_as_file("screenshot.png")
                         time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante
-                        choice = input("Error while scraping the main page: 'mosaic-provider-jobcards' not found\nDo you want to continue [Y/n]?: ")
-                        if choice == 'n': exit()
+                        #choice = input("Error while scraping the main page: 'mosaic-provider-jobcards' not found\nDo you want to continue [Y/n]?: ")
+                        #if choice == 'n': exit()
+                        jobsFound = False
                         continue
 
                     jobCards = jobCardsContainer.find_elements(By.XPATH,".//*[@dir]")#jobCardsContainer.find_elements(By.XPATH,"//ul//child:li")
