@@ -97,9 +97,10 @@ def find_object(id: str, request: Request):
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"{objectname.capitalize()} with ID {id} not found")
 
 #
-@router.put("/{id}", response_description=f"Updates {objectName} in database with provided id with provided dictionnary object", response_model=objectModel)
+@router.patch("/{id}", response_description=f"Updates {objectName} in database with provided id with provided dictionnary object",)#, response_model=objectModel)
 def update_object(id: str, request: Request, obj: objectUpdateModel = Body(...)):
-    obj = {k: v for k, v in obj.dict().items() if v is not None}
+    #obj = {k: v for k, v in obj.dict().items() if v is not None}
+    obj = obj.dict(exclude_unset=True)
     if len(obj) >= 1:
         update_result = request.app.database[f"{objectName}s"].update_one(
             {"_id": id}, {"$set": obj}
