@@ -32,19 +32,19 @@ def create_object(request: Request, obj: objectModel = Body(...)):
 @router.get("/", response_description=f"Returns all {objectName}s in the database (defaults: page=1, perPage=2)")#, response_model=List[objectModel])
 def list_objects(request: Request, page:int=1, perPage:int=25, status: dict|None = None):
     if status is None: status = {
-        "null": True,
-        "new": True,
-        "openReferal": True,
-        "openReadyToApply": True,
-        "onGoingSelectedForApplication": True,
-        "onGoingApplied": False,
-        "closedLost": False,
-        "closedExpired": False,
-        "closedLostDoNotQualify": False,
-        "closedTimeout": False,
-        "closedNotInterested": False
+        "Null": True,
+        "New": True,
+        "Open_ReferalStage": True,
+        "Open_ReadyToApply": True,
+        "OnGoing_SelectedForApplication": True,
+        "OnGoing_Applied": False,
+        "Closed_Lost": False,
+        "Closed_Expired": False,
+        "Closed_Lost_DoNotQualify": False,
+        "Closed_Timeout": False,
+        "Closed_NotInterested": False
     }
-    selectedStatus = [None if k == "null" and v == True else k if v else {} for k,v in status.items()]
+    selectedStatus = [None if k == "Null" and v == True else k if v else {} for k,v in status.items()]
     col = request.app.database[f"{objectName}s"]
     query = {"status": {"$in": selectedStatus}}
     projection = {}
