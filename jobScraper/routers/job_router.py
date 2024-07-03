@@ -44,7 +44,7 @@ def list_objects(request: Request, page:int=1, perPage:int=25, status: dict|None
         "closedTimeout": False,
         "closedNotInterested": False
     }
-    selectedStatus = [k if v else {} for k,v in status.items()]
+    selectedStatus = [None if k == "null" and v == True else k if v else {} for k,v in status.items()]
     col = request.app.database[f"{objectName}s"]
     query = {"status": {"$in": selectedStatus}}
     projection = {}
