@@ -218,9 +218,9 @@ class JobScraper:
         os.makedirs(self.sessionDirPath)
 
         platforms = {
-            #"FR_indeed": self.getJobsIndeed,
-            #"CAN_linkedIn": self.getJobsLinkedin,
+            "FR_indeed": self.getJobsIndeed,
             "CAN_indeed": self.getJobsIndeedCAN,
+            #"CAN_linkedIn": self.getJobsLinkedin,
             #"FR_linkedIn": self.getJobsLinkedin,
             #"FR_apec": self.getJobsApec,
             #"FR_cadremploi": self.getJobsCadremploi,
@@ -312,6 +312,17 @@ class JobScraper:
             city = " ".join(wkStr)
             return (city, zip)
 
+        def urlEncodeQuery(string) -> str:
+            substitutions = [
+            (',', '%2C'),
+            (' ', '+'),
+            ]
+
+            for search, replacement in substitutions:
+                string = string.replace(search, replacement)
+            
+            return string
+
         platform = "fr.indeed.com"
         createdAt = self.dbTimestamp
         createdOn = self.dbTimestamp.split("T")[0]
@@ -328,9 +339,13 @@ class JobScraper:
         locations = [ ]#["Île-de-France", "Lyon"]
         for location in jobSearchLocations:
             if location["query"]:
-                locations.append(location["query"])
+                if platform in location["query"]:
+                    loc = location["query"][platform]
+                else:
+                    loc = location["query"]["else"]
             else:
-                locations.append(location["city"])
+                loc = location["city"]
+            locations.append(urlEncodeQuery(loc))
 
         queries = self.getSearchQueries()
 
@@ -529,21 +544,29 @@ class JobScraper:
                     log.debug(f"Post #{idx_post} is not is searchedContractTypes - SKIPPED\nPost url:{postUrl}")
                     continue
                 
-                applyButtonElement = body.find_elements(By.XPATH,".//div[@id='jobsearch-ViewJobButtons-container']")[0].find_elements(By.XPATH, ".//button")[0]
-                applyButtonText = applyButtonElement.get_attribute("innerText")
+                
+                viewJobButtonContainerElement = body.find_elements(By.XPATH,".//div[@id='jobsearch-ViewJobButtons-container']")[0]
+                indeedApplyButtonElement = viewJobButtonContainerElement.find_elements(By.XPATH, ".//div[starts-with(@class,'jobsearch-IndeedApplyButton')]")
+                extSiteApplyButtonElement = viewJobButtonContainerElement.find_elements(By.XPATH, ".//div[starts-with(@id,'applyButtonLinkContainer')]")
+                applyButtonElement = viewJobButtonContainerElement.find_elements(By.XPATH, ".//button")[0]
+                # jobsearch-ViewJobButtons-container
+                # jobsearch-ViewJobButtons-container
                 applyUrl = None
-                match applyButtonText:
-                    case "Continuer pour postuler":
-                        buttonLink = applyButtonElement.get_attribute("href")
-                        if buttonLink: 
-                            self.driver.get(url=buttonLink)
-                            time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante
-                            applyUrl = self.driver.current_url
-                    case "Postuler maintenant":
-                        # Indeed Apply
-                        applyUrl = postUrl
-                    case _:
-                        log.debug("ScraperLog - Apply Button was not found in the page.")
+                if len(extSiteApplyButtonElement)>0:
+                    # Application on an external website
+                    log.debug(f"ScraperLog - Found external application button: {extSiteApplyButtonElement[0].get_attribute('innerHTML')}")
+                    buttonLink = applyButtonElement.get_attribute("href")
+                    if buttonLink: 
+                        self.driver.get(url=buttonLink)
+                        time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante
+                        applyUrl = self.driver.current_url
+                elif len(indeedApplyButtonElement)>0:
+                    log.debug(f"ScraperLog - Found internal application button: {indeedApplyButtonElement[0].get_attribute('innerHTML')}")
+                    # Application on Indeed
+                    applyUrl = postUrl
+                else:
+                    log.debug("ScraperLog - Apply Button (Indeed apply or external apply) was not found in the page.")
+
 
             except Exception as e:
                 log.debug(f"""ScraperLog - Error:\n{json.dumps(obj={
@@ -716,7 +739,7 @@ class JobScraper:
         for idx_loc, location in enumerate(locations):
             for idx_q, query in enumerate(queries):
                 queryString = "+".join(query.split(" "))
-                url = f"https://ca.indeed.com/jobs?q={queryString}&l={location}&sort=date&fromage={fromAge}&radius={searchRadius}"
+                url = f"https://{platform}/jobs?q={queryString}&l={location}&sort=date&fromage={fromAge}&radius={searchRadius}"
                 page = 1
                 log.info(f"ScraperLog - New job search>query:'{query}', location:'{location}'\n{url}")
                 totalJobsCount = 0
@@ -811,7 +834,7 @@ class JobScraper:
                         jobId = re.split("-|_", aTagId)[1] #aTagId.split("_")[1] if aTagId else None
                         log.debug(f"ScraperLog - jobId: {jobId}")
                         if jobId: 
-                            jobPostUrl = f"https://fr.indeed.com/viewjob?jk={jobId}"
+                            jobPostUrl = f"https://{platform}/viewjob?jk={jobId}"
                             postUrlsDict[jobPostUrl] = {
                                 "url": jobPostUrl,
                                 "query": query,
@@ -845,7 +868,7 @@ class JobScraper:
         # Scrap all posts
         postUrls = list(postUrlsDict.keys())
         #print(postUrls)# if self.debug else {}
-        log.debug(f"ScraperLog - postsUrls: {postUrls}")
+        log.debug(f"ScraperLog - postsUrls ({len(postUrls)}): {postUrls}")
         posts = []
         errors = []
 
@@ -907,21 +930,28 @@ class JobScraper:
                     log.debug(f"Post #{idx_post} is not is searchedContractTypes - SKIPPED\nPost url:{postUrl}")
                     continue
                 
-                applyButtonElement = body.find_elements(By.XPATH,".//div[@id='jobsearch-ViewJobButtons-container']")[0].find_elements(By.XPATH, ".//button")[0]
-                applyButtonText = applyButtonElement.get_attribute("innerText")
+                viewJobButtonContainerElement = body.find_elements(By.XPATH,".//div[@id='jobsearch-ViewJobButtons-container']")[0]
+                indeedApplyButtonElement = viewJobButtonContainerElement.find_elements(By.XPATH, ".//div[starts-with(@class,'jobsearch-IndeedApplyButton')]")
+                extSiteApplyButtonElement = viewJobButtonContainerElement.find_elements(By.XPATH, ".//div[starts-with(@id,'applyButtonLinkContainer')]")
+                applyButtonElement = viewJobButtonContainerElement.find_elements(By.XPATH, ".//button")[0]
+                # jobsearch-ViewJobButtons-container
+                # jobsearch-ViewJobButtons-container
                 applyUrl = None
-                match applyButtonText:
-                    case "Continuer pour postuler":
-                        buttonLink = applyButtonElement.get_attribute("href")
-                        if buttonLink: 
-                            self.driver.get(url=buttonLink)
-                            time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante
-                            applyUrl = self.driver.current_url
-                    case "Postuler maintenant":
-                        # Indeed Apply
-                        applyUrl = postUrl
-                    case _:
-                        log.debug("ScraperLog - Apply Button was not found in the page.")
+                if len(extSiteApplyButtonElement)>0:
+                    # Application on an external website
+                    log.debug(f"ScraperLog - Found external application button: {extSiteApplyButtonElement[0].get_attribute('innerHTML')}")
+                    buttonLink = applyButtonElement.get_attribute("href")
+                    if buttonLink: 
+                        self.driver.get(url=buttonLink)
+                        time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante
+                        applyUrl = self.driver.current_url
+                elif len(indeedApplyButtonElement)>0:
+                    log.debug(f"ScraperLog - Found internal application button: {indeedApplyButtonElement[0].get_attribute('innerHTML')}")
+                    # Application on Indeed
+                    applyUrl = postUrl
+                else:
+                    log.debug("ScraperLog - Apply Button (Indeed apply or external apply) was not found in the page.")
+
 
             except Exception as e:
                 log.debug(f"""ScraperLog - Error:\n{json.dumps(obj={
