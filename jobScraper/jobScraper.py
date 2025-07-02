@@ -28,7 +28,7 @@ log.basicConfig(filename=os.path.join(ROOT_DIR,"logs","scraper.log"), encoding='
 class JobScraper:
     def __init__(self) -> None:
         self.debug = False
-        self.dalJob = self.DataAccessLayer(resourceName="job")#, apiUrl="http://192.168.1.99:8000")
+        self.dalJob = self.DataAccessLayer(resourceName="job")#, apiUrl="http://192.168.1.100:8000")
         self.today = datetime.now()
         self.targetDay = self.today
         self.year = str(self.targetDay.year)
