@@ -22,8 +22,16 @@ from routers.models.job import Job
 from routers.models.job import JobUpdate
 from urllib.parse import quote_plus as urlEncode
 
+from playwright.sync_api import sync_playwright
+from fake_useragent import UserAgent
+import random
+
 import logging as log
 log.basicConfig(filename=os.path.join(ROOT_DIR,"logs","scraper.log"), encoding='utf-8', filemode='w', format='%(asctime)s-%(levelname)s:%(message)s', level=log.DEBUG)
+
+# Optional: Use your own proxy
+PROXY = None  # e.g., "http://username:password@proxyhost:port"
+
 
 class JobScraper:
     def __init__(self) -> None:
@@ -42,6 +50,7 @@ class JobScraper:
         self.dbTimestamp = ""
         self.countryCode = ""
         self.antibotFlagPauseSeconds = 5 #2.5
+
         self.chromeDriverPath = "/snap/bin/chromium.chromedriver"#"/snap/chromium/2873/usr/lib/chromium-browser/chromedriver"
         self.chromeOptions = webdriver.ChromeOptions()
         self.chromeOptions.add_argument('--headless')
@@ -50,7 +59,9 @@ class JobScraper:
         self.chromeOptions.add_argument('--window-size=1920,1080')
         #self.chromeOptions.add_argument('--ignore-certificate-errors')
         #self.chromeOptions.add_argument('--allow-running-insecure-content')
+
         user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.50 Safari/537.36'
+        # user_agent = self.get_random_user_agent()
         self.chromeOptions.add_argument(f'user-agent={user_agent}')
         self.setSearchContractTypes(
             fullTime=True,
@@ -61,7 +72,10 @@ class JobScraper:
             freelance=True
         )
         
-    
+    def get_random_user_agent():
+        ua = UserAgent()
+        return ua.random
+
     class DataAccessLayer:
         def __init__(self, resourceName:str, apiUrl: str = "http://127.0.0.1:8000") -> None:
             self.apiUrl = f"{apiUrl}/{resourceName}s"
@@ -141,12 +155,12 @@ class JobScraper:
         #return ["kotlin"]
         commonList = [
             "kotlin",
-            "flutter",
             "python",
-            "javascript"
+            "javascript",
+            "c#"
             ]
         countryList = {
-            "FR": ["développeur mobile"],
+            # "FR": ["développeur mobile"],
             "CAN": ["mobile developer"],
             "CAN-QC": ["développeur mobile"],
         }
@@ -220,7 +234,7 @@ class JobScraper:
         os.makedirs(self.sessionDirPath)
 
         platforms = {
-            "FR_indeed": self.getJobsIndeedFR,
+            # "FR_indeed": self.getJobsIndeedFR,
             "CAN_indeed": self.getJobsIndeedCAN,
             #"CAN_linkedIn": self.getJobsLinkedin,
             #"FR_linkedIn": self.getJobsLinkedin,
@@ -385,7 +399,7 @@ class JobScraper:
                 "queryParam": urlEncodeQuery(loc)
             })
 
-        queries = self.getSearchQueries()
+        queries = self.getSearchQueries(self.countryCode)
 
         # Retrieve all job searches posts urls
         searchRadius = 25 # search radius of x km outside of the given location; available values : 0, 10, 25, 35, 

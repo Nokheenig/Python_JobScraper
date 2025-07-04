@@ -7,3 +7,5 @@ pydantic
 fastapi[all]
 pymongo[srv] 
 python-dotenv
+playwright
+fake-useragent
