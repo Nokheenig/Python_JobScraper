@@ -32,7 +32,6 @@ log.basicConfig(filename=os.path.join(ROOT_DIR,"logs","scraper.log"), encoding='
 # Optional: Use your own proxy
 PROXY = None  # e.g., "http://username:password@proxyhost:port"
 
-
 class JobScraper:
     def __init__(self) -> None:
         self.debug = False
@@ -42,27 +41,120 @@ class JobScraper:
         self.year = str(self.targetDay.year)
         self.month = str(self.targetDay.month)
         self.day = "0" + str(self.targetDay.day) if len(str(self.targetDay.day)) < 2 else str(self.targetDay.day) #on ajoute 0 devant le jour s'il est compris entre 1 et 9
-        self.driver = None #webdriver.Chrome()#ChromeDriverManager().install()) 
-        #time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante 
+        
+        # self.chromeDriverPath = "/snap/bin/chromium.chromedriver"#"/snap/chromium/2873/usr/lib/chromium-browser/chromedriver"
+        # self.chromeOptions = webdriver.ChromeOptions()
+        # self.chromeOptions.add_argument('--headless')
+        # self.chromeOptions.add_argument('--no-sandbox')
+        # self.chromeOptions.add_argument('--disable-dev-shm-usage')
+        # self.chromeOptions.add_argument('--window-size=1920,1080')
+        # #self.chromeOptions.add_argument('--ignore-certificate-errors')
+        # #self.chromeOptions.add_argument('--allow-running-insecure-content')
+        # user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.50 Safari/537.36'
+        # self.chromeOptions.add_argument(f'user-agent={user_agent}')
+
+        self.playwright = None
+        self.browser = None
+        self.context = None
+        self.page = None
+
+        self.commonViewports = [
+            {"width": 1920, "height": 1080},
+            {"width": 1366, "height": 768},
+            {"width": 1440, "height": 900},
+            {"width": 1280, "height": 800},
+            {"width": 1536, "height": 864},
+            {"width": 1600, "height": 900},
+            {"width": 1280, "height": 720},
+        ]
+
+        # self.currentCountryCode = None #Code du pays actuel, par défaut France
+        self.countryCode = ""
+        self.localeByCountry = {
+            "US": "en-US",
+            "GB": "en-GB",
+            "CA": "en-CA",
+            "AU": "en-AU",
+            "IE": "en-IE",
+            "NZ": "en-NZ",
+            "IN": "en-IN",
+
+            "FR": "fr-FR",
+            "BE": "fr-BE",
+            "CH": "fr-CH",
+
+            "DE": "de-DE",
+            "AT": "de-AT",
+            "CH_DE": "de-CH",  # German-speaking part of Switzerland
+
+            "IT": "it-IT",
+            "ES": "es-ES",
+            "MX": "es-MX",
+            "AR": "es-AR",
+            "CL": "es-CL",
+            "CO": "es-CO",
+            "PE": "es-PE",
+
+            "PT": "pt-PT",
+            "BR": "pt-BR",
+
+            "NL": "nl-NL",
+            "BE_NL": "nl-BE",  # Dutch-speaking part of Belgium
+
+            "PL": "pl-PL",
+            "CZ": "cs-CZ",
+            "SK": "sk-SK",
+            "HU": "hu-HU",
+
+            "RU": "ru-RU",
+            "UA": "uk-UA",
+
+            "JP": "ja-JP",
+            "KR": "ko-KR",
+            "CN": "zh-CN",
+            "TW": "zh-TW",
+            "HK": "zh-HK",
+
+            "TR": "tr-TR",
+            "IL": "he-IL",
+            "SA": "ar-SA",
+            "IR": "fa-IR",
+
+            "SE": "sv-SE",
+            "NO": "nb-NO",
+            "DK": "da-DK",
+            "FI": "fi-FI",
+
+            "RO": "ro-RO",
+            "BG": "bg-BG",
+            "GR": "el-GR",
+            "TH": "th-TH",
+            "VN": "vi-VN",
+
+            "ID": "id-ID",
+            "MY": "ms-MY",
+
+            "ZA": "en-ZA",
+            "NG": "en-NG",
+            "EG": "ar-EG",
+
+            "HK_EN": "en-HK",
+            "SG": "en-SG",
+        }
+
+        self.userAgentNominalFetchedPages = 100 #Nombre nominal de pages à scrapper avant de changer d'user agent
+        self.userAgentMaxFetchedPages = 0 #Nombre de pages à scrapper avant de changer d'user agent
+        self.userAgentFetchedPages = 0 #Nombre de pages scrappées avec l'user agent actuel
+        
         self.sessionDirPath = ""
         self.sessionPlatformFilesPath = ""
         self.fsTimestamp = ""
         self.dbTimestamp = ""
-        self.countryCode = ""
+        
         self.antibotFlagPauseSeconds = 5 #2.5
 
-        self.chromeDriverPath = "/snap/bin/chromium.chromedriver"#"/snap/chromium/2873/usr/lib/chromium-browser/chromedriver"
-        self.chromeOptions = webdriver.ChromeOptions()
-        self.chromeOptions.add_argument('--headless')
-        self.chromeOptions.add_argument('--no-sandbox')
-        self.chromeOptions.add_argument('--disable-dev-shm-usage')
-        self.chromeOptions.add_argument('--window-size=1920,1080')
-        #self.chromeOptions.add_argument('--ignore-certificate-errors')
-        #self.chromeOptions.add_argument('--allow-running-insecure-content')
 
-        user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.50 Safari/537.36'
         # user_agent = self.get_random_user_agent()
-        self.chromeOptions.add_argument(f'user-agent={user_agent}')
         self.setSearchContractTypes(
             fullTime=True,
             temporary=True,
@@ -71,10 +163,86 @@ class JobScraper:
             apprenticeship=True,
             freelance=True
         )
-        
+    
     def get_random_user_agent():
         ua = UserAgent()
         return ua.random
+
+    def start(self, countryCode: str):
+        browser_args = []
+        if PROXY:
+            browser_args.append(f'--proxy-server={PROXY}')
+
+        user_agent = self.get_random_user_agent()
+        self.userAgentFetchedPages = 0
+        multiplier = random.randrange(0,100) / 100
+        multiplier = 1 if multiplier >= 0.5 else -1
+        self.userAgentMaxFetchedPages = self.userAgentNominalFetchedPages + multiplier * random.randint(0, math.ceil(self.userAgentNominalFetchedPages * 0.3)) #On ajoute ou retranche un nombre aléatoire de pages à scrapper entre 0 et 30% du nombre nominal de pages
+        log.debug(f"ScraperLog - New user agent max fetched pages: {self.userAgentMaxFetchedPages}")
+
+        self.playwright = sync_playwright().start()
+        self.browser = self.playwright.chromium.launch(headless=False, args=browser_args)
+
+        viewport = random.choice(self.commonViewports)
+        locale = self.localeByCountry.get(countryCode, "en-US")
+        self.context = self.browser.new_context(
+            user_agent=user_agent,
+            viewport=viewport,
+            locale=locale,
+        )
+        self.page = self.context.new_page()
+
+    def stop(self):
+        log.debug("ScraperLog - Stopping Playwright browser context")
+        if self.browser:
+            self.browser.close()
+        if self.playwright:
+            self.playwright.stop()
+        self.browser = self.playwright = self.context = self.page = None
+
+    def visit_page(self, url):
+        if self.page is None:
+            log.debug("ScraperLog - Starting Playwright browser context")
+            self.start(countryCode=self.countryCode)
+        
+        if self.userAgentFetchedPages >= self.userAgentMaxFetchedPages:
+            log.debug(f"ScraperLog - User agent fetched pages limit reached: {self.userAgentFetchedPages} >= {self.userAgentMaxFetchedPages}")
+            self.stop() # Close the browser context and stop Playwright
+            return self.visit_page(url) # Restart the process with a new user agent
+
+        log.debug(f"ScraperLog - Fetching page content from url: {url}")
+        self.page.goto(url) # self.page.goto(url, timeout=60000)
+        # Optional: wait for page to render fully
+        self.page.wait_for_load_state('networkidle')
+        self.currentUrl = self.page.url
+        log.debug(f"Final resolved URL: {self.currentUrl}")
+        self.userAgentFetchedPages += 1
+        log.debug(f"ScraperLog - User agent fetched pages: {self.userAgentFetchedPages} / {self.userAgentMaxFetchedPages}")
+
+    def sleep(self, seconds):
+        time.sleep(seconds)
+
+    def random_sleep(self, min_seconds=4, max_seconds=12, deepSleep=True):
+        random_seconds = random.uniform(min_seconds, max_seconds)
+        log.debug(f"ScraperLog - Sleeping for {random_seconds:.2f} seconds")
+        time.sleep(random_seconds)
+        if deepSleep:
+            random_seconds = random.uniform(min_seconds, max_seconds)
+            log.debug(f"ScraperLog - Deep Sleeping (2nd sleep) for {random_seconds:.2f} seconds")
+            time.sleep(random_seconds)
+
+    def search(self, query):
+        self.page.fill("input[name='q']", query)
+        self.page.press("input[name='q']", "Enter")
+
+    def get_title(self):
+        return self.page.title()
+
+    def getPageContent(self):
+        """
+        Returns the HTML content of the current page.
+        """
+        return self.page.content()
 
     class DataAccessLayer:
         def __init__(self, resourceName:str, apiUrl: str = "http://127.0.0.1:8000") -> None:
@@ -161,8 +329,8 @@ class JobScraper:
             ]
         countryList = {
             # "FR": ["développeur mobile"],
-            "CAN": ["mobile developer"],
-            "CAN-QC": ["développeur mobile"],
+            "CA": ["mobile developer"],
+            "CA-QC": ["développeur mobile"],
         }
         cList: list = countryList[countryCode]
         searchQueries = commonList #[*commonList,*cList]
@@ -235,7 +403,7 @@ class JobScraper:
 
         platforms = {
             # "FR_indeed": self.getJobsIndeedFR,
-            "CAN_indeed": self.getJobsIndeedCAN,
+            "CA_indeed": self.getJobsIndeedCAN,
             #"CAN_linkedIn": self.getJobsLinkedin,
             #"FR_linkedIn": self.getJobsLinkedin,
             #"FR_apec": self.getJobsApec,
@@ -251,7 +419,8 @@ class JobScraper:
         print(f"JobScraper - Started scraping job for:\n{platforms}")
         result = [ ]
         for idx_ptf, platform in enumerate(platforms.keys()):
-            self.countryCode = platform.split("_")[0]
+            self.countryRegionCode = platform.split("_")[0]
+            self.countryCode = self.countryRegionCode.split("-")[0]
             self.sessionPlatformFilesPath = os.path.join(self.sessionDirPath,f"{idx_ptf}.{platform}")
             os.makedirs(self.sessionPlatformFilesPath)
             sessionFailuresPath = os.path.join(self.sessionPlatformFilesPath,"failures")
@@ -276,6 +445,7 @@ class JobScraper:
             print(f"JobScraper - Finished scraping jobs for:\n{platforms}")
             print("No jobs were added in database, maybe the jobs were already there? Check log files for more details.")
 
+    
 
 
     def getJobsIndeed(self, platform:str) -> list[dict]:
@@ -333,7 +503,7 @@ class JobScraper:
                     wkStr.pop(-1)
                     city = " ".join(wkStr)
                     district = None
-                case "CAN":
+                case "CA":
                     district = inStr.split(", ")[-1]
                     wkStr = inStr.split(", ")
                     wkStr.pop(-1)
@@ -380,8 +550,8 @@ class JobScraper:
         
 
         sessionFilesDir = self.sessionPlatformFilesPath
-        self.driver = webdriver.Chrome(options=self.chromeOptions, service=Service(self.chromeDriverPath))#ChromeDriverManager().install()) 
-        time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante
+        self.start(countryCode=self.countryCode)
+        self.random_sleep()
 
         #Start Scraping Logic
         jobSearchLocations = JOB_SEARCH_LOCATIONS[self.countryCode]
@@ -420,10 +590,10 @@ class JobScraper:
                 page = 1
                 log.info(f"ScraperLog - New job search>query:'{query}', location:'{locationName}'\n{url}")
                 totalJobsCount = 0
-                self.driver.get(url=url) #Accès aux annonces du jour'
-                if False:
-                    newScreenshotPath = os.path.join(self.sessionPlatformFilesPath,"failures",f"test_{locationName}_{query}_screenshot.png")
-                    self.driver.get_screenshot_as_file(newScreenshotPath)
+                self.visit_page(url) #Accès aux annonces du jour
+                if True:
+                    newScreenshotPath = os.path.join(self.sessionPlatformFilesPath,"failures",f"test_{locationName}_{query}_TestScreenshot.png")
+                    self.page.screenshot(path=newScreenshotPath, full_page=True)
                 #btnDateFilter = self.driver.find_element(By.ID, "filter-dateposted") #On identifie le bouton 
                 #self.driver.execute_script("arguments[0].click();", btnDateFilter); # On clique dessus
                 jobsFound = True
@@ -432,14 +602,16 @@ class JobScraper:
                 while not lastPage and jobsFound:
                     log.info(f"ScraperLog - Getting job urls on page {page}...")
                     
-                    jobCardsContainer = self.driver.find_elements(By.ID,"mosaic-provider-jobcards")
+                    # jobCardsContainer = self.driver.find_elements(By.ID,"mosaic-provider-jobcards")
+                    jobCardsContainer = self.page.locator("#mosaic-provider-jobcards")
                     jobCardsContainer = jobCardsContainer[0] if len(jobCardsContainer) >0 else None
                     if jobCardsContainer: 
                         log.debug(f"ScraperLog - Page {page}: Found jobCardsContainer")
                     else:
                         #jobCardsContainer is None 
                         errorMessage = ""
-                        noResultMessageContainer = self.driver.find_elements(By.XPATH,"//div[starts-with(@class,'jobsearch-NoResult-messageContainer')]")
+                        # noResultMessageContainer = self.driver.find_elements(By.XPATH,"//div[starts-with(@class,'jobsearch-NoResult-messageContainer')]")
+                        noResultMessageContainer = self.page.locator("//div[starts-with(@class,'jobsearch-NoResult-messageContainer')]")
                         if len(noResultMessageContainer) >0:
                             errorMessage = f"No jobs have been found for the current query: {{query:'{query}', location:'{locationName}'}}"
                             print(errorMessage)
@@ -453,11 +625,10 @@ class JobScraper:
                                 }, indent=4)}""" #On ajoute dans une liste tous les articles dont n'où n'avons pas pu scrapper le contenu
                             errors.append(errorMessage)
                             newScreenshotPath = os.path.join(self.sessionPlatformFilesPath,"failures",f"error_{len(errors)}_screenshot.png")
-                            self.driver.get_screenshot_as_file(newScreenshotPath)
+                            self.page.screenshot(path=newScreenshotPath, full_page=True)
                         
                         log.debug(f"ScraperLog - Error: {errorMessage}")
-                        #self.driver.get_screenshot_as_file("screenshot.png")
-                        time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante
+                        self.random_sleep()
                         #choice = input("Error while scraping the main page: 'mosaic-provider-jobcards' not found\nDo you want to continue [Y/n]?: ")
                         #if choice == 'n': exit()
                         jobsFound = False
@@ -483,8 +654,8 @@ class JobScraper:
                             log.debug(f"ScraperLog - Error: {errorMessage}") #On ajoute dans une liste tous les articles dont n'où n'avons pas pu scrapper le contenu
                             errors.append(errorMessage)
                             newScreenshotPath = os.path.join(self.sessionPlatformFilesPath,"failures",f"error_{len(errors)}_screenshot.png")
-                            self.driver.get_screenshot_as_file(newScreenshotPath)
-                            time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante
+                            self.page.screenshot(path=newScreenshotPath, full_page=True)
+                            self.random_sleep()
                             continue
                         else:
                             log.debug(f"ScraperLog - jobCard #{idx_jobCard}:Found a job title: retrieving job ID...")
@@ -500,7 +671,7 @@ class JobScraper:
                             "query": query,
                             " url": url
                             }, indent=4)}""") #On ajoute dans une liste tous les articles dont n'où n'avons pas pu scrapper le contenu
-                            time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante
+                            self.random_sleep()
                             continue
                         else:
                             log.debug(f"ScraperLog - jobCard #{idx_jobCard}:Found an ID holder: retrieving job ID...")
@@ -524,7 +695,7 @@ class JobScraper:
                             "query": query,
                             " url": url
                             },indent=4)}""") #On ajoute dans une liste tous les articles dont n'où n'avons pas pu scrapper le contenu
-                            time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante
+                            self.random_sleep()
                             continue
                         jobId = re.split("-|_", aTagId)[1] #aTagId.split("_")[1] if aTagId else None
                         log.debug(f"ScraperLog - jobId: {jobId}")
@@ -542,21 +713,21 @@ class JobScraper:
                     ^v2
                     """
 
-                    btnNext = self.driver.find_elements(By.XPATH, "//a[@data-testid='pagination-page-next']") #On identifie le bouton 
-                    btnNext = btnNext[0] if len(btnNext) >0 else None
+                    # btnNext = self.driver.find_elements(By.XPATH, "//a[@data-testid='pagination-page-next']") #On identifie le bouton 
+                    btnNext = self.page.locator("//a[@data-testid='pagination-page-next']") #On identifie le bouton 
                     """
                     ^v2
                     """
-                    if btnNext: 
-                        self.driver.execute_script("arguments[0].click();", btnNext); # On clique dessus
-                        page +=1
-                        time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante
-
+                    # Check if the element exists and is visible
+                    if btnNext.count() > 0:
+                        btnNext.first.click()
+                        page += 1
+                        self.random_sleep()
                     else:
                         lastPage = True
                         log.debug(f"ScraperLog - {totalJobsCount} jobs in total found for the following job search> query:'{query}', location:'{locationName}'")
                         print(f"{totalJobsCount} jobs in total found for the following job search> query:'{query}', location:'{locationName}'")
-                        time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante
+                        self.random_sleep()
                         
         log.debug(f"ScraperLog - Posts url gathering finished. Here's the list of posts to scrap: {postUrlsDict}")
         if len(errors) != 0:
@@ -588,15 +759,15 @@ class JobScraper:
                             print(message)
                             log.info(message)
                             break
-                    self.driver.get(url=postUrl)
-                    time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante
+                    self.visit_page(postUrl) #Accès à la page de l'annonce
+                    self.random_sleep()
                     log.info(f"ScraperLog - Scraping Post #{idx_post}: {postUrl}")
 
                     slug = postUrl.split("/")[-1]
 
                     try:
                         # Récupération du body de la page:
-                        body = self.driver.find_element(By.XPATH, "/html/body")
+                        body = self.page.locator("/html/body")
 
                         """
                         Sauvegarde des sources de la page scrappée sur le disque
@@ -657,9 +828,9 @@ class JobScraper:
                             log.debug(f"ScraperLog - Found external application button: {extSiteApplyButtonElement[0].get_attribute('innerHTML')}")
                             buttonLink = applyButtonElement.get_attribute("href")
                             if buttonLink: 
-                                self.driver.get(url=buttonLink)
-                                time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante
-                                applyUrl = self.driver.current_url
+                                self.visit_page(url=buttonLink) #Accès à la page de l'annonce
+                                self.random_sleep()
+                                applyUrl = self.currentUrl
                             else:
                                 applyUrl = postUrl
                         elif len(indeedApplyButtonElement)>0:
@@ -733,11 +904,12 @@ class JobScraper:
                 #                f.write(json.dumps(obj=errors, indent=4))
                 #End Scraping Logic
 
-                time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante
+                self.random_sleep()
 
 
-        self.driver.close()
-        time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante
+        # self.page.close()
+        self.stop()
+        self.random_sleep()
 
         jobPosts = [ ]
         for location in posts.keys():
@@ -758,394 +930,6 @@ class JobScraper:
         posts = self.getJobsIndeed(platform="ca.indeed.com")
         return posts
 
-    def getJobsIndeedCANOld(self) -> list[dict]:
-        # Testé pour des recherches d'emploi en France et en Francais
-        def cleanPostDescription(html:str | None) -> str:
-            if not html: return ""
-            
-            boldTagPattern = "(<b>).+?(</b>)"
-            listItemTagPattern = "(<li>).+?(</li>)"
-            lineBreakPattern = "<br>"
-            removeRemainingHTMLTagsPattern = "</*.+?>"
-            removeHTMLTags = lambda inStr : re.sub(removeRemainingHTMLTagsPattern,"",inStr)
-
-            wkStr = html
-            matches = []
-            regexFinder = re.compile(boldTagPattern)
-            for m in regexFinder.finditer(wkStr):
-                matches.append(m)
-            matches.reverse()
-            for m in matches:
-                replacement = "\n# " + removeHTMLTags(wkStr[m.start():m.end()]) + "\n"
-                wkStr = wkStr[:m.start()] + replacement + wkStr[m.end():]
-
-            matches = []
-            regexFinder = re.compile(listItemTagPattern)
-            for m in regexFinder.finditer(wkStr):
-                matches.append(m)
-            matches.reverse()
-            for i,m in enumerate(matches):
-                replacement = "- " + removeHTMLTags(wkStr[m.start():m.end()])
-                wkStr = wkStr[:m.start()] + replacement + wkStr[m.end():]
-
-            wkStr.replace(lineBreakPattern,"\n")
-            wkStr = removeHTMLTags(wkStr)
-
-
-            wkStr = wkStr.split("\n")
-            out = []
-            for idx_line, lineEnum in enumerate(wkStr):
-                line = lineEnum.strip()
-                if line:
-                        out.append("\n" + line if (line[0] == "#") else line)
-            out = "\n".join(out)
-            #print(wkStr)
-
-            return out
-
-        def extractDistrictCodeFromCity(inStr: str | None) -> tuple[str,str]:
-            if inStr is None: return ("","")
-            district = inStr.split(", ")[-1]
-            
-            wkStr = inStr.split(", ")
-            wkStr.pop(-1)
-            city = " ".join(wkStr)
-            match city.lower():
-                case "montreal":
-                    district = "Quebec"
-                case "toronto":
-                    district = "Ontario"
-                case "ottawa":
-                    district = "Ontario"
-                case "vancouver":
-                    district = "British Columbia"
-                case _:
-                    district = district
-
-            return (city, district)
-
-        def urlEncodeQuery(string) -> str:
-            substitutions = [
-            (',', '%2C'),
-            (' ', '+'),
-            ]
-
-            for search, replacement in substitutions:
-                string = string.replace(search, replacement)
-            
-            return string
-        
-        platform = "ca.indeed.com"
-        createdAt = self.dbTimestamp
-        createdOn = self.dbTimestamp.split("T")[0]
-        country = COUNTRY_CODES_MAP[self.countryCode]
-        sourceType = "jobBoard"
-        
-
-        sessionFilesDir = self.sessionPlatformFilesPath
-        self.driver = webdriver.Chrome(options=self.chromeOptions, service=Service(self.chromeDriverPath))#ChromeDriverManager().install()) 
-        time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante
-
-        #Start Scraping Logic
-        jobSearchLocations = JOB_SEARCH_LOCATIONS[self.countryCode]
-
-        
-        locations = [ ]#["Île-de-France", "Lyon"]
-        for location in jobSearchLocations:
-            if location["query"]:
-                if platform in location["query"]:
-                    loc = location["query"][platform]
-                else:
-                    loc = location["query"]["else"]
-            else:
-                loc = location["city"]
-            locations.append(urlEncodeQuery(loc))
-
-        queries = self.getSearchQueries()
-
-        # Retrieve all job searches posts urls
-        searchRadius = 25 # search radius of x km outside of the given location; available values : 0, 10, 25, 35, 
-        fromAge = 1 # jobs from the last x days; available values 1, 3,7,14
-        postUrlsDict = {}
-        errors=[]
-        for idx_loc, location in enumerate(locations):
-            for idx_q, query in enumerate(queries):
-                queryString = "+".join(query.split(" "))
-                url = f"https://{platform}/jobs?q={queryString}&l={location}&sort=date&fromage={fromAge}&radius={searchRadius}"
-                page = 1
-                log.info(f"ScraperLog - New job search>query:'{query}', location:'{location}'\n{url}")
-                totalJobsCount = 0
-                self.driver.get(url=url) #Accès aux annonces du jour'
-                #btnDateFilter = self.driver.find_element(By.ID, "filter-dateposted") #On identifie le bouton 
-                #self.driver.execute_script("arguments[0].click();", btnDateFilter); # On clique dessus
-                jobsFound = True
-                lastPage = False
-                
-                while not lastPage and jobsFound:
-                    log.info(f"ScraperLog - Getting job urls on page {page}...")
-                    
-                    jobCardsContainer = self.driver.find_elements(By.ID,"mosaic-provider-jobcards")
-                    jobCardsContainer = jobCardsContainer[0] if len(jobCardsContainer) >0 else None
-                    if jobCardsContainer is None: 
-
-                        noResultMessageContainer = self.driver.find_elements(By.XPATH,"//div[starts-with(@class,'jobsearch-NoResult-messageContainer')]")
-                        if len(noResultMessageContainer) >0:
-                            log.info(f"No jobs have been found for the current query: {{query:'{query}', location:'{location}'}}")
-                        else:
-                            log.debug(f"""ScraperLog - Error:\n{json.dumps(obj={
-                                "message": f"Error while scraping the main page: 'mosaic-provider-jobcards' not found",
-                                " location" : location,
-                                "query": query,
-                                " url": url
-                                }, indent=4)}""") #On ajoute dans une liste tous les articles dont n'où n'avons pas pu scrapper le contenu
-                        
-                        #self.driver.get_screenshot_as_file("screenshot.png")
-                        time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante
-                        #choice = input("Error while scraping the main page: 'mosaic-provider-jobcards' not found\nDo you want to continue [Y/n]?: ")
-                        #if choice == 'n': exit()
-                        jobsFound = False
-                        continue
-
-                    jobCards = jobCardsContainer.find_elements(By.XPATH,".//*[@dir]")#jobCardsContainer.find_elements(By.XPATH,"//ul//child:li")
-                    pageJobsCount = len(jobCards)
-                    totalJobsCount += pageJobsCount
-                    log.debug(f"ScraperLog - {pageJobsCount} cards/jobs found on page {page}")
-                    for idx_jobCard, jobCard in enumerate(jobCards):
-                        log.debug(f"ScraperLog - jobCard #{idx_jobCard}:\n>>>\n{jobCard.get_attribute('innerHTML')}\n<<<\n")
-                        aTagId = jobCard.find_elements(By.XPATH,".//h2[starts-with(@class,'jobTitle')]//a")
-                        aTagId = aTagId[-1] if len(aTagId) >0 else None
-                        if aTagId is None: 
-                            log.debug(f"""ScraperLog - Error:\n{json.dumps(obj={
-                            "message": f"Error while scraping the main page: job card hyperlink (a tag) not found",
-                            " location" : location,
-                            "query": query,
-                            " url": url
-                            }, indent=4)}""") #On ajoute dans une liste tous les articles dont n'où n'avons pas pu scrapper le contenu
-                            time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante
-                            continue
-                        else:
-                            log.debug(f"ScraperLog - jobCard #{idx_jobCard}:Found a job title: retrieving job ID...")
-                            log.debug(f"Title:\noOoOoOoOoOo\n{aTagId.get_attribute('innerHTML')}\noOoOoOoOoOo\n")
-                        
-                        # Looking for the direct HTML element holding the job ID
-                        aTagId = aTagId.find_elements(By.XPATH,".//*[starts-with(@id,'jobTitle')]")
-                        aTagId = aTagId[0] if len(aTagId) >0 else None
-                        if aTagId is None: 
-                            log.debug(f"""ScraperLog - Error:\n{json.dumps(obj={
-                            "message": f"Error while scraping the main page: job card hyperlink (a tag) HTML id holder not found",
-                            " location" : location,
-                            "query": query,
-                            " url": url
-                            }, indent=4)}""") #On ajoute dans une liste tous les articles dont n'où n'avons pas pu scrapper le contenu
-                            time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante
-                            continue
-                        else:
-                            log.debug(f"ScraperLog - jobCard #{idx_jobCard}:Found an ID holder: retrieving job ID...")
-                            #log.debug(f"Title:\noOoOoOoOoOo\n{aTagId.get_attribute('innerHTML')}\noOoOoOoOoOo\n")
-                        """
-                        ^v1
-                        -> abandoned by XPath here because it seems WebDriver isnt looking for h2 in every loop subHTML element but rather in the whole document, making `aTagId = aTagId[0] if len(aTagId) >0 else None` always select the first jobCard title a link while the current loop HTML is another card.
-                        -> Finally good because we had to add `.` in front of the xpath so that the WebDriver would take over from current position.
-                        """
-
-                        """
-                        aTagId = jobCard.find_elements(By.TAG_NAME,"h2")[0].find_elements(By.TAG_NAME,"a")[0]
-                        ^v2
-                        """
-
-                        aTagId = aTagId.get_attribute("id")
-                        if aTagId is None:
-                            log.debug(f"""ScraperLog - Error:\n{json.dumps(obj={
-                            "message": f"Error while scraping the main page: job card hyperlink (a tag) HTML id holder -> ID found Null",
-                            " location" : location,
-                            "query": query,
-                            " url": url
-                            },indent=4)}""") #On ajoute dans une liste tous les articles dont n'où n'avons pas pu scrapper le contenu
-                            time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante
-                            continue
-                        jobId = re.split("-|_", aTagId)[1] #aTagId.split("_")[1] if aTagId else None
-                        log.debug(f"ScraperLog - jobId: {jobId}")
-                        if jobId: 
-                            jobPostUrl = f"https://{platform}/viewjob?jk={jobId}"
-                            postUrlsDict[jobPostUrl] = {
-                                "url": jobPostUrl,
-                                "query": query,
-                                "location": location
-                            }
-
-                    """
-                    ^v2
-                    """
-
-                    btnNext = self.driver.find_elements(By.XPATH, "//a[@data-testid='pagination-page-next']") #On identifie le bouton 
-                    btnNext = btnNext[0] if len(btnNext) >0 else None
-                    """
-                    ^v2
-                    """
-                    if btnNext: 
-                        self.driver.execute_script("arguments[0].click();", btnNext); # On clique dessus
-                        page +=1
-                        time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante
-
-                    else:
-                        lastPage = True
-                        log.debug(f"ScraperLog - {totalJobsCount} jobs in total found for the following job search> query:'{query}', location:'{location}'")
-                        time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante
-                        
-
-        if len(errors) != 0:
-            with open(os.path.join(sessionFilesDir,f"errors_main_page.json"), "w", encoding='utf-8') as f:
-                        f.write(json.dumps(obj=errors, indent=4))
-
-        # Scrap all posts
-        postUrls = list(postUrlsDict.keys())
-        #print(postUrls)# if self.debug else {}
-        log.debug(f"ScraperLog - postsUrls ({len(postUrls)}): {postUrls}")
-        posts = []
-        errors = []
-
-        for idx_post, postUrl in enumerate(postUrls):
-            if postUrl in self.dalJob.scrapedUrlsInDb:
-                log.info(f"Post {idx_post} - SKIPPED - Post already scraped: Post Url already in database\nurl: {postUrl}")
-                print(f"Post {idx_post} - SKIPPED - Post already scraped: Post Url already in database\nurl: {postUrl}")
-                continue
-            self.driver.get(url=postUrl)
-            time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante
-            log.info(f"ScraperLog - Scraping Post #{idx_post}: {postUrl}")
-
-            slug = postUrl.split("/")[-1]
-
-            try:
-                # Récupération du body de la page:
-                body = self.driver.find_element(By.XPATH, "/html/body")
-
-                """
-                Sauvegarde des sources de la page scrappée sur le disque
-                """
-                if self.debug:
-                    with open(os.path.join(sessionFilesDir,f"{idx_post}_source.html"), "w", encoding='utf-8') as f:
-                            f.write(self.driver.page_source)
-
-                    with open(os.path.join(sessionFilesDir,f"{idx_post}_source_body.html"), "w", encoding='utf-8') as f:
-                            f.write(str(body.get_attribute("innerHTML")).strip())
-
-                titleElement = body.find_element(By.XPATH,"//h1[starts-with(@class,'jobsearch-JobInfoHeader-title')]//span")
-                title = titleElement.get_attribute("innerText")
-
-                companyInfoElement = body.find_element(By.XPATH,"//div[@data-testid='jobsearch-CompanyInfoContainer']")
-                companyNameElement = companyInfoElement.find_element(By.XPATH, "//div[@data-testid='inlineHeader-companyName']//a")
-                companyLocationElement = companyInfoElement.find_element(By.XPATH, "//div[@data-testid='inlineHeader-companyLocation']//div")
-
-                companyName = companyNameElement.get_attribute("innerText")
-                companyLocation = companyLocationElement.get_attribute("innerText")
-
-                jobLocationElement = body.find_element(By.XPATH, "//div[@id='jobLocationText']//span")
-                jobLocation = jobLocationElement.get_attribute("innerText")
-                city, district = extractDistrictCodeFromCity(jobLocation)
-
-                jobDescriptionElement = body.find_element(By.ID, "jobDescriptionText")
-                jobDescriptionHTML = jobDescriptionElement.get_attribute("innerHTML")
-                jobDescription = cleanPostDescription(html=jobDescriptionHTML)
-
-                salaryInfoAndJobTypeElement = body.find_element(By.ID, "salaryInfoAndJobType")
-                salaryInfoAndJobTypeSubElements = salaryInfoAndJobTypeElement.find_elements(By.TAG_NAME,"span")
-                
-                if len(salaryInfoAndJobTypeSubElements) == 1:
-                    jobType = "fulltime"
-                else:
-                    jobTypeElement = salaryInfoAndJobTypeSubElements[-1]
-
-                    jobType = str(jobTypeElement.get_attribute("innerText")).strip()
-                    if jobType:
-                        if jobType[0] == "-": jobType = jobType[1:].strip()
-                
-                
-                isSearchedJobType, genericJobType = self.isSearchedTypeOfContract(jobContractType=jobType)
-                if not isSearchedJobType: 
-                    log.debug(f"Post #{idx_post} is not is searchedContractTypes - SKIPPED\nPost url:{postUrl}")
-                    continue
-                
-                viewJobButtonContainerElement = body.find_elements(By.XPATH,".//div[@id='jobsearch-ViewJobButtons-container']")[0]
-                indeedApplyButtonElement = viewJobButtonContainerElement.find_elements(By.XPATH, ".//div[starts-with(@class,'jobsearch-IndeedApplyButton')]")
-                extSiteApplyButtonElement = viewJobButtonContainerElement.find_elements(By.XPATH, ".//div[starts-with(@id,'applyButtonLinkContainer')]")
-                applyButtonElement = viewJobButtonContainerElement.find_elements(By.XPATH, ".//button")[0]
-                # jobsearch-ViewJobButtons-container
-                # jobsearch-ViewJobButtons-container
-                applyUrl = None
-                if len(extSiteApplyButtonElement)>0:
-                    # Application on an external website
-                    log.debug(f"ScraperLog - Found external application button: {extSiteApplyButtonElement[0].get_attribute('innerHTML')}")
-                    buttonLink = applyButtonElement.get_attribute("href")
-                    if buttonLink: 
-                        self.driver.get(url=buttonLink)
-                        time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante
-                        applyUrl = self.driver.current_url
-                elif len(indeedApplyButtonElement)>0:
-                    log.debug(f"ScraperLog - Found internal application button: {indeedApplyButtonElement[0].get_attribute('innerHTML')}")
-                    # Application on Indeed
-                    applyUrl = postUrl
-                else:
-                    log.debug("ScraperLog - Apply Button (Indeed apply or external apply) was not found in the page.")
-
-
-            except Exception as e:
-                log.debug(f"""ScraperLog - Error:\n{json.dumps(obj={
-                        "message": f"Error while scraping the job page: {e}",
-                        " url": postUrl
-                        }, indent=4)}""") #On ajoute dans une liste tous les articles dont n'où n'avons pas pu scrapper le contenu
-            
-
-            skills = []
-            scrapStatus = "new"
-            status = None
-            tags = [
-                postUrlsDict[postUrl]["query"]
-            ]
-
-            job = {
-                "title": title,
-                "sourceType": sourceType,
-                "platform": platform,
-                "criterias": {
-                    "query": postUrlsDict[postUrl]["query"],
-                    "location":postUrlsDict[postUrl]["location"]
-                },
-                "url": postUrl,
-                "applyUrl": applyUrl,
-                "slug": slug,
-                "motherCompany": companyName,
-                "company": companyName,
-                "country": country,
-                "district": district,
-                "city": city,
-                "zipCode": None,
-                "contractType": genericJobType,
-                "skills": None,
-                "description": jobDescription,
-                "scrapStatus": scrapStatus,
-                "status": None,
-                "applicationDate": None,
-                "timeoutDate": None,
-                "createdAt": createdAt,
-                "createdOn": createdOn,
-                "lastUpdated": None,
-                "tags": tags,
-                "qualificationsRequired": None,
-                "qualificationsPreferred": None,
-                "structuredData": None
-            }
-            posts.append(job)
-
-        if len(errors) != 0:
-            with open(os.path.join(sessionFilesDir,f"errors_job_pages.json"), "w", encoding='utf-8') as f:
-                        f.write(json.dumps(obj=errors, indent=4))
-        #End Scraping Logic
-
-        time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante 
-        self.driver.close()
-        time.sleep(self.antibotFlagPauseSeconds) #Ajout d'un temps de deux secondes avant de lancer l'action suivante
-        return posts
-    
     def getJobsLinkedin(self) -> list[dict]:
         return []
     def getJobsApec(self) -> list[dict]:

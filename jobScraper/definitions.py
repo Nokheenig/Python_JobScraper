@@ -10,15 +10,15 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) # This is your Project Roo
 CONFIG_PATH = os.path.join(ROOT_DIR, 'configuration.conf')  # requires `import os`
 COUNTRY_CODES_MAP = {
     "FR": "France",
-    "CAN": "Canada",
+    "CA": "Canada",
     "KR": "Korea",
     "JP": "Japan",
     "TW": "Taiwan",
     "VN": "Vietnam",
     "PH": "Philippines",
     "TH": "Thailand",
-    "IDN": "Indonesia",
-    "AUS": "Australia",
+    #"IDN": "Indonesia",
+    "AU": "Australia",
     "US": "United-States",
     "UK": "United-Kingdom",
 }
@@ -53,7 +53,7 @@ JOB_SEARCH_LOCATIONS = {
             "query": None
         }
     ],
-    "CAN": [
+    "CA": [
         {
             "city": "Montreal",
             "district": "Quebec",
@@ -172,7 +172,7 @@ JOB_SEARCH_LOCATIONS = {
             "query": None
         },
     ],
-    "IDN": [
+    "ID": [
         {
             "city": "Jakarata",
             "district": "None",
@@ -184,7 +184,7 @@ JOB_SEARCH_LOCATIONS = {
             "query": None
         },
     ],
-    "AUS": [
+    "AU": [
         {
             "city": "Sydney",
             "district": "None",
