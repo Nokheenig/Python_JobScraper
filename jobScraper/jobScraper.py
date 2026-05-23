@@ -164,7 +164,7 @@ class JobScraper:
             freelance=True
         )
     
-    def get_random_user_agent():
+    def get_random_user_agent(self):
         ua = UserAgent()
         return ua.random
 
